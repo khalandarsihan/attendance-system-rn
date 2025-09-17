@@ -1,4 +1,4 @@
-// src/screens/TeacherSubjectsScreen.js
+// src/screens/TeacherSubjectsScreen.js - Fixed with proper time sorting
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -44,6 +44,15 @@ export default function TeacherSubjectsScreen({ route, navigation }) {
     });
   };
 
+  // Helper function to convert time string to minutes for sorting
+  const timeToMinutes = (timeString) => {
+    if (!timeString || !timeString.includes("-")) return 0;
+
+    const [startTime] = timeString.split("-");
+    const [hours, minutes] = startTime.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
   const renderSubject = ({ item }) => (
     <TouchableOpacity
       style={styles.subjectCard}
@@ -77,7 +86,12 @@ export default function TeacherSubjectsScreen({ route, navigation }) {
     daysOfWeek.forEach((day) => {
       subjectsByDay[day] = mySubjects
         .filter((subject) => subject.day === day)
-        .sort((a, b) => a.time.localeCompare(b.time));
+        .sort((a, b) => {
+          // Sort by time - earliest first
+          const timeA = timeToMinutes(a.time);
+          const timeB = timeToMinutes(b.time);
+          return timeA - timeB;
+        });
     });
 
     return subjectsByDay;
@@ -90,6 +104,9 @@ export default function TeacherSubjectsScreen({ route, navigation }) {
       <View style={styles.header}>
         <Text style={styles.title}>My Subjects</Text>
         <Text style={styles.subtitle}>Faculty Code: {facultyCode}</Text>
+        <Text style={styles.totalCount}>
+          Total Subjects: {mySubjects.length}
+        </Text>
       </View>
 
       <FlatList
@@ -97,16 +114,36 @@ export default function TeacherSubjectsScreen({ route, navigation }) {
         keyExtractor={(item) => item}
         renderItem={({ item: day }) => (
           <View style={styles.daySection}>
-            <Text style={styles.dayTitle}>
-              {day} ({subjectsByDay[day].length} classes)
-            </Text>
+            <View style={styles.dayHeader}>
+              <Text style={styles.dayTitle}>{day}</Text>
+              <Text style={styles.dayCount}>
+                {subjectsByDay[day].length} classes
+              </Text>
+            </View>
             {subjectsByDay[day].length > 0 ? (
-              <FlatList
-                data={subjectsByDay[day]}
-                keyExtractor={(subject) => subject.id}
-                renderItem={renderSubject}
-                scrollEnabled={false}
-              />
+              <View style={styles.subjectsContainer}>
+                {subjectsByDay[day].map((subject) => (
+                  <TouchableOpacity
+                    key={subject.id}
+                    style={styles.subjectCard}
+                    onPress={() => startClass(subject)}
+                  >
+                    <View style={styles.timeIndicator}>
+                      <Text style={styles.timeText}>{subject.time}</Text>
+                    </View>
+                    <View style={styles.subjectInfo}>
+                      <Text style={styles.subjectName}>{subject.name}</Text>
+                      <Text style={styles.subjectDetails}>
+                        Faculty: {subject.faculty} • {subject.day}
+                      </Text>
+                    </View>
+                    <View style={styles.actionSection}>
+                      <Text style={styles.actionText}>Take Attendance</Text>
+                      <Text style={styles.arrowText}>→</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             ) : (
               <View style={styles.emptyDay}>
                 <Text style={styles.emptyText}>No classes scheduled</Text>
@@ -117,6 +154,7 @@ export default function TeacherSubjectsScreen({ route, navigation }) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={loadMySubjects} />
         }
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -142,26 +180,59 @@ const styles = StyleSheet.create({
     color: "#C8E6C9",
     marginTop: 4,
   },
+  totalCount: {
+    fontSize: 12,
+    color: "#A5D6A7",
+    marginTop: 4,
+  },
   daySection: {
     margin: 16,
+  },
+  dayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   dayTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
-    marginBottom: 12,
-    backgroundColor: "#E8F5E9",
-    padding: 12,
-    borderRadius: 8,
+    color: "#2E7D32",
   },
-  subjectCard: {
+  dayCount: {
+    fontSize: 14,
+    color: "#666",
+  },
+  subjectsContainer: {
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
     elevation: 2,
+    overflow: "hidden",
+  },
+  subjectCard: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  timeIndicator: {
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 16,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  timeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2E7D32",
   },
   subjectInfo: {
     flex: 1,
@@ -171,28 +242,32 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
-  subjectSchedule: {
-    fontSize: 14,
+  subjectDetails: {
+    fontSize: 12,
     color: "#666",
     marginTop: 4,
   },
   actionSection: {
     alignItems: "center",
+    paddingLeft: 16,
   },
   actionText: {
     fontSize: 12,
     color: "#2E7D32",
     marginBottom: 4,
+    fontWeight: "500",
   },
   arrowText: {
     fontSize: 18,
     color: "#2E7D32",
+    fontWeight: "bold",
   },
   emptyDay: {
     backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
     alignItems: "center",
+    elevation: 1,
   },
   emptyText: {
     color: "#999",
