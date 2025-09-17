@@ -1,4 +1,4 @@
-// src/screens/TeacherAttendanceScreen.js - Fixed time format handling
+// src/screens/TeacherAttendanceScreen.js - Enhanced with Default Present
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -17,6 +17,7 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
   const [attendance, setAttendance] = useState({});
   const [classSession, setClassSession] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [defaultApplied, setDefaultApplied] = useState(false);
   const [date] = useState(new Date().toISOString().split("T")[0]);
 
   // Update current time every minute
@@ -85,6 +86,7 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         if (attendanceData) {
           const parsedData = JSON.parse(attendanceData);
           setAttendance(parsedData.attendance || {});
+          setDefaultApplied(true); // Assume defaults were applied if attendance exists
         }
       }
     } catch (error) {
@@ -145,14 +147,102 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         `Class started ${formatDelay(delayMinutes)} late.\nScheduled: ${
           subject.time
         }\nActual: ${startTime.toLocaleTimeString()}`,
-        [{ text: "OK" }]
+        [{ text: "OK", onPress: showDefaultPresentPrompt }]
       );
     } else {
       Alert.alert(
         "Class Started",
-        `${subject.name} session started successfully!`
+        `${subject.name} session started successfully!`,
+        [{ text: "OK", onPress: showDefaultPresentPrompt }]
       );
     }
+  };
+
+  // NEW: Show prompt to apply default "Present" status
+  const showDefaultPresentPrompt = () => {
+    Alert.alert(
+      "Quick Setup",
+      "Mark all students as Present by default? You can then change individual students to Absent (A) or Late (L) as needed.",
+      [
+        {
+          text: "Manual Marking",
+          style: "cancel",
+          onPress: () => {
+            // Do nothing - keep empty attendance
+          },
+        },
+        {
+          text: "Mark All Present",
+          onPress: applyDefaultPresent,
+        },
+      ]
+    );
+  };
+
+  // NEW: Apply default "Present" status to all students
+  const applyDefaultPresent = () => {
+    const timestamp = new Date().toISOString();
+    const defaultAttendance = {};
+
+    students.forEach((student) => {
+      defaultAttendance[student.id] = {
+        status: "present",
+        timestamp,
+        markedBy: faculty,
+        isDefault: true, // Flag to indicate this was auto-applied
+      };
+    });
+
+    setAttendance(defaultAttendance);
+    setDefaultApplied(true);
+
+    Alert.alert(
+      "All Students Marked Present",
+      "All students have been marked as Present. Tap individual students to change to Absent (A) or Late (L) if needed.",
+      [{ text: "OK" }]
+    );
+  };
+
+  // NEW: Manual option to apply defaults after class has started
+  const applyDefaultsLater = () => {
+    if (!classSession) {
+      Alert.alert("Error", "Please start the class session first");
+      return;
+    }
+
+    Alert.alert(
+      "Mark All Present",
+      "This will mark all currently unmarked students as Present. Students already marked will not be changed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Apply",
+          onPress: () => {
+            const timestamp = new Date().toISOString();
+            const updatedAttendance = { ...attendance };
+
+            students.forEach((student) => {
+              if (!updatedAttendance[student.id]) {
+                updatedAttendance[student.id] = {
+                  status: "present",
+                  timestamp,
+                  markedBy: faculty,
+                  isDefault: true,
+                };
+              }
+            });
+
+            setAttendance(updatedAttendance);
+            setDefaultApplied(true);
+
+            Alert.alert(
+              "Applied",
+              "All unmarked students have been marked as Present"
+            );
+          },
+        },
+      ]
+    );
   };
 
   const endClass = async () => {
@@ -228,17 +318,34 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
     }
   };
 
-  const markAttendance = (studentId, status) => {
+  // ENHANCED: Modified to handle cycling through statuses more efficiently
+  const markAttendance = (studentId, newStatus) => {
     const timestamp = new Date().toISOString();
     const updatedAttendance = {
       ...attendance,
       [studentId]: {
-        status,
+        status: newStatus,
         timestamp,
         markedBy: faculty,
+        isDefault: false, // Mark as manually set
       },
     };
     setAttendance(updatedAttendance);
+  };
+
+  // NEW: Quick toggle function for faster interaction
+  const quickToggleAttendance = (studentId) => {
+    const currentStatus = attendance[studentId]?.status || "present";
+
+    // Cycle: Present -> Absent -> Late -> Present
+    const nextStatus =
+      currentStatus === "present"
+        ? "absent"
+        : currentStatus === "absent"
+        ? "late"
+        : "present";
+
+    markAttendance(studentId, nextStatus);
   };
 
   const saveAttendance = async () => {
@@ -247,6 +354,47 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
       return;
     }
 
+    // Check if any students are unmarked
+    const unmarkedStudents = students.filter(
+      (student) => !attendance[student.id]
+    );
+
+    if (unmarkedStudents.length > 0) {
+      Alert.alert(
+        "Unmarked Students",
+        `${unmarkedStudents.length} students are not marked. Do you want to:\n\n• Mark them as Present and save\n• Save with unmarked students\n• Cancel and mark manually`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Save Unmarked", onPress: performSave },
+          {
+            text: "Mark Present & Save",
+            onPress: () => {
+              // Mark unmarked students as present
+              const timestamp = new Date().toISOString();
+              const updatedAttendance = { ...attendance };
+
+              unmarkedStudents.forEach((student) => {
+                updatedAttendance[student.id] = {
+                  status: "present",
+                  timestamp,
+                  markedBy: faculty,
+                  isDefault: true,
+                };
+              });
+
+              setAttendance(updatedAttendance);
+              setTimeout(performSave, 100); // Small delay to ensure state update
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    performSave();
+  };
+
+  const performSave = async () => {
     try {
       const attendanceData = {
         date,
@@ -260,6 +408,7 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         savedAt: new Date().toISOString(),
         actualDuration: classSession.actualDuration,
         efficiency: classSession.efficiency,
+        defaultsApplied: defaultApplied,
       };
 
       // Save attendance
@@ -319,6 +468,7 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
     return Math.round((endTime - startTime) / (1000 * 60));
   };
 
+  // ENHANCED: Updated student card rendering with better UX
   const renderStudent = ({ item }) => {
     const studentAttendance = attendance[item.id];
     const status =
@@ -326,54 +476,84 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         ? studentAttendance
         : studentAttendance?.status;
     const timestamp = studentAttendance?.timestamp;
+    const isDefault = studentAttendance?.isDefault;
 
     return (
       <View style={styles.studentCard}>
-        <View style={styles.studentInfo}>
+        <TouchableOpacity
+          style={styles.studentInfo}
+          onPress={() => quickToggleAttendance(item.id)}
+        >
           <Text style={styles.studentName}>{item.name}</Text>
           <Text style={styles.studentDetails}>
             Roll: {item.rollNumber} • {item.className}
           </Text>
           {timestamp && (
             <Text style={styles.timestampText}>
-              Marked at: {formatTime(timestamp)}
+              {isDefault ? "Auto-marked" : "Manually marked"} at:{" "}
+              {formatTime(timestamp)}
             </Text>
           )}
-        </View>
+          <Text style={styles.tapHint}>Tap to cycle: P → A → L</Text>
+        </TouchableOpacity>
 
-        <View style={styles.attendanceButtons}>
-          <TouchableOpacity
+        <View style={styles.attendanceSection}>
+          {/* Status Indicator */}
+          <View
             style={[
-              styles.statusButton,
-              styles.presentButton,
-              status === "present" && styles.activeButton,
+              styles.statusIndicator,
+              status === "present" && styles.presentIndicator,
+              status === "absent" && styles.absentIndicator,
+              status === "late" && styles.lateIndicator,
+              !status && styles.unmarkedIndicator,
             ]}
-            onPress={() => markAttendance(item.id, "present")}
           >
-            <Text style={styles.buttonText}>P</Text>
-          </TouchableOpacity>
+            <Text style={styles.statusIndicatorText}>
+              {status === "present"
+                ? "P"
+                : status === "absent"
+                ? "A"
+                : status === "late"
+                ? "L"
+                : "?"}
+            </Text>
+          </View>
 
-          <TouchableOpacity
-            style={[
-              styles.statusButton,
-              styles.absentButton,
-              status === "absent" && styles.activeButton,
-            ]}
-            onPress={() => markAttendance(item.id, "absent")}
-          >
-            <Text style={styles.buttonText}>A</Text>
-          </TouchableOpacity>
+          {/* Quick Action Buttons */}
+          <View style={styles.attendanceButtons}>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.presentButton,
+                status === "present" && styles.activeButton,
+              ]}
+              onPress={() => markAttendance(item.id, "present")}
+            >
+              <Text style={styles.buttonText}>P</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.statusButton,
-              styles.lateButton,
-              status === "late" && styles.activeButton,
-            ]}
-            onPress={() => markAttendance(item.id, "late")}
-          >
-            <Text style={styles.buttonText}>L</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.absentButton,
+                status === "absent" && styles.activeButton,
+              ]}
+              onPress={() => markAttendance(item.id, "absent")}
+            >
+              <Text style={styles.buttonText}>A</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.lateButton,
+                status === "late" && styles.activeButton,
+              ]}
+              onPress={() => markAttendance(item.id, "late")}
+            >
+              <Text style={styles.buttonText}>L</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -431,6 +611,24 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
               )}
             </View>
 
+            {/* NEW: Quick Actions Row */}
+            <View style={styles.quickActionsRow}>
+              {!defaultApplied && (
+                <TouchableOpacity
+                  style={styles.defaultPresentButton}
+                  onPress={applyDefaultsLater}
+                >
+                  <Text style={styles.defaultPresentText}>
+                    Mark All Present
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <Text style={styles.quickTip}>
+                💡 Tip: Tap student names to quickly cycle P → A → L
+              </Text>
+            </View>
+
             <View style={styles.durationInfo}>
               <Text style={styles.durationText}>
                 Duration: {currentDuration} min /{" "}
@@ -480,7 +678,7 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         )}
       </View>
 
-      {/* Stats */}
+      {/* Enhanced Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{stats.present}</Text>
@@ -494,9 +692,28 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
           <Text style={styles.statNumber}>{stats.late}</Text>
           <Text style={styles.statLabel}>Late</Text>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats.unmarked}</Text>
-          <Text style={styles.statLabel}>Unmarked</Text>
+        <View
+          style={[
+            styles.statItem,
+            stats.unmarked > 0 && styles.warningStatItem,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statNumber,
+              stats.unmarked > 0 && styles.warningStatNumber,
+            ]}
+          >
+            {stats.unmarked}
+          </Text>
+          <Text
+            style={[
+              styles.statLabel,
+              stats.unmarked > 0 && styles.warningStatLabel,
+            ]}
+          >
+            Unmarked
+          </Text>
         </View>
       </View>
 
@@ -509,13 +726,15 @@ export default function TeacherAttendanceScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Save Button */}
+      {/* Enhanced Save Button */}
       <TouchableOpacity
         style={[styles.saveButton, !classSession && styles.disabledButton]}
         onPress={saveAttendance}
         disabled={!classSession}
       >
-        <Text style={styles.saveButtonText}>Save Attendance</Text>
+        <Text style={styles.saveButtonText}>
+          Save Attendance {stats.unmarked > 0 && `(${stats.unmarked} unmarked)`}
+        </Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
