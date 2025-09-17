@@ -1,5 +1,5 @@
-// src/screens/DataCleanupScreen.js
-import React, { useState, useEffect } from 'react';
+// src/screens/DataCleanupScreen.js - Updated with separate delete features
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function DataCleanupScreen({ navigation }) {
   const [stats, setStats] = useState({
@@ -28,9 +28,9 @@ export default function DataCleanupScreen({ navigation }) {
   const analyzeData = async () => {
     try {
       const [subjectsData, studentsData, logsData] = await Promise.all([
-        AsyncStorage.getItem('subjects'),
-        AsyncStorage.getItem('students'),
-        AsyncStorage.getItem('attendanceLogs'),
+        AsyncStorage.getItem("subjects"),
+        AsyncStorage.getItem("students"),
+        AsyncStorage.getItem("attendanceLogs"),
       ]);
 
       // Analyze subjects
@@ -39,18 +39,18 @@ export default function DataCleanupScreen({ navigation }) {
       if (subjectsData) {
         const subjects = JSON.parse(subjectsData);
         totalSubjects = subjects.length;
-        
+
         // Find duplicates by name, faculty, day, time
         const seen = new Set();
         const duplicates = new Set();
-        subjects.forEach(subject => {
+        subjects.forEach((subject) => {
           const key = `${subject.name}-${subject.faculty}-${subject.day}-${subject.time}`;
           if (seen.has(key)) {
             duplicates.add(key);
           }
           seen.add(key);
         });
-        duplicateSubjects = subjects.filter(subject => {
+        duplicateSubjects = subjects.filter((subject) => {
           const key = `${subject.name}-${subject.faculty}-${subject.day}-${subject.time}`;
           return duplicates.has(key);
         }).length;
@@ -62,9 +62,9 @@ export default function DataCleanupScreen({ navigation }) {
       if (studentsData) {
         const students = JSON.parse(studentsData);
         totalStudents = students.length;
-        
+
         // Find duplicates by roll number
-        const rollNumbers = students.map(s => s.rollNumber);
+        const rollNumbers = students.map((s) => s.rollNumber);
         duplicateStudents = rollNumbers.length - new Set(rollNumbers).size;
       }
 
@@ -82,17 +82,17 @@ export default function DataCleanupScreen({ navigation }) {
         attendanceLogs,
       });
     } catch (error) {
-      console.log('Error analyzing data:', error);
+      console.log("Error analyzing data:", error);
     }
   };
 
   const cleanupSubjects = async () => {
     Alert.alert(
-      'Remove Duplicate Subjects',
+      "Remove Duplicate Subjects",
       `This will remove ${stats.duplicateSubjects} duplicate subject entries. Continue?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clean Up', onPress: performSubjectCleanup }
+        { text: "Cancel", style: "cancel" },
+        { text: "Clean Up", onPress: performSubjectCleanup },
       ]
     );
   };
@@ -100,13 +100,13 @@ export default function DataCleanupScreen({ navigation }) {
   const performSubjectCleanup = async () => {
     setIsLoading(true);
     try {
-      const subjectsData = await AsyncStorage.getItem('subjects');
+      const subjectsData = await AsyncStorage.getItem("subjects");
       if (subjectsData) {
         const subjects = JSON.parse(subjectsData);
-        
+
         // Remove duplicates - keep first occurrence
         const seen = new Set();
-        const uniqueSubjects = subjects.filter(subject => {
+        const uniqueSubjects = subjects.filter((subject) => {
           const key = `${subject.name}-${subject.faculty}-${subject.day}-${subject.time}`;
           if (seen.has(key)) {
             return false; // Skip duplicate
@@ -115,27 +115,31 @@ export default function DataCleanupScreen({ navigation }) {
           return true; // Keep unique
         });
 
-        await AsyncStorage.setItem('subjects', JSON.stringify(uniqueSubjects));
-        
+        await AsyncStorage.setItem("subjects", JSON.stringify(uniqueSubjects));
+
         Alert.alert(
-          'Cleanup Complete',
-          `Removed ${subjects.length - uniqueSubjects.length} duplicate subjects.\nKept ${uniqueSubjects.length} unique subjects.`,
-          [{ text: 'OK', onPress: analyzeData }]
+          "Cleanup Complete",
+          `Removed ${
+            subjects.length - uniqueSubjects.length
+          } duplicate subjects.\nKept ${
+            uniqueSubjects.length
+          } unique subjects.`,
+          [{ text: "OK", onPress: analyzeData }]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to cleanup subjects');
+      Alert.alert("Error", "Failed to cleanup subjects");
     }
     setIsLoading(false);
   };
 
   const cleanupStudents = async () => {
     Alert.alert(
-      'Remove Duplicate Students',
+      "Remove Duplicate Students",
       `This will remove duplicate student entries. Continue?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clean Up', onPress: performStudentCleanup }
+        { text: "Cancel", style: "cancel" },
+        { text: "Clean Up", onPress: performStudentCleanup },
       ]
     );
   };
@@ -143,13 +147,13 @@ export default function DataCleanupScreen({ navigation }) {
   const performStudentCleanup = async () => {
     setIsLoading(true);
     try {
-      const studentsData = await AsyncStorage.getItem('students');
+      const studentsData = await AsyncStorage.getItem("students");
       if (studentsData) {
         const students = JSON.parse(studentsData);
-        
+
         // Remove duplicates by roll number - keep first occurrence
         const seen = new Set();
-        const uniqueStudents = students.filter(student => {
+        const uniqueStudents = students.filter((student) => {
           if (seen.has(student.rollNumber)) {
             return false; // Skip duplicate
           }
@@ -157,31 +161,155 @@ export default function DataCleanupScreen({ navigation }) {
           return true; // Keep unique
         });
 
-        await AsyncStorage.setItem('students', JSON.stringify(uniqueStudents));
-        
+        await AsyncStorage.setItem("students", JSON.stringify(uniqueStudents));
+
         Alert.alert(
-          'Cleanup Complete',
-          `Removed ${students.length - uniqueStudents.length} duplicate students.\nKept ${uniqueStudents.length} unique students.`,
-          [{ text: 'OK', onPress: analyzeData }]
+          "Cleanup Complete",
+          `Removed ${
+            students.length - uniqueStudents.length
+          } duplicate students.\nKept ${
+            uniqueStudents.length
+          } unique students.`,
+          [{ text: "OK", onPress: analyzeData }]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to cleanup students');
+      Alert.alert("Error", "Failed to cleanup students");
+    }
+    setIsLoading(false);
+  };
+
+  // NEW: Delete all subjects
+  const deleteAllSubjects = async () => {
+    Alert.alert(
+      "Delete All Subjects",
+      `This will permanently delete ALL ${stats.totalSubjects} subjects and their related attendance data. This action cannot be undone!`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE ALL SUBJECTS",
+          style: "destructive",
+          onPress: performDeleteAllSubjects,
+        },
+      ]
+    );
+  };
+
+  const performDeleteAllSubjects = async () => {
+    setIsLoading(true);
+    try {
+      // Remove all subjects
+      await AsyncStorage.removeItem("subjects");
+
+      // Remove all attendance logs related to subjects
+      await AsyncStorage.removeItem("attendanceLogs");
+
+      // Clear all attendance session data
+      const allKeys = await AsyncStorage.getAllKeys();
+      const attendanceKeys = allKeys.filter(
+        (key) => key.startsWith("attendance_") || key.startsWith("session_")
+      );
+      if (attendanceKeys.length > 0) {
+        await AsyncStorage.multiRemove(attendanceKeys);
+      }
+
+      Alert.alert(
+        "Subjects Deleted",
+        "All subjects and related attendance data have been permanently deleted.",
+        [{ text: "OK", onPress: analyzeData }]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to delete subjects");
+    }
+    setIsLoading(false);
+  };
+
+  // NEW: Delete all students
+  const deleteAllStudents = async () => {
+    Alert.alert(
+      "Delete All Students",
+      `This will permanently delete ALL ${stats.totalStudents} students. Attendance records will be preserved but student names will show as unknown. This action cannot be undone!`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE ALL STUDENTS",
+          style: "destructive",
+          onPress: performDeleteAllStudents,
+        },
+      ]
+    );
+  };
+
+  const performDeleteAllStudents = async () => {
+    setIsLoading(true);
+    try {
+      // Remove all students
+      await AsyncStorage.removeItem("students");
+
+      Alert.alert(
+        "Students Deleted",
+        "All student records have been permanently deleted. Attendance logs are preserved.",
+        [{ text: "OK", onPress: analyzeData }]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to delete students");
+    }
+    setIsLoading(false);
+  };
+
+  // NEW: Delete all attendance logs
+  const deleteAllAttendanceLogs = async () => {
+    Alert.alert(
+      "Delete All Attendance Records",
+      `This will permanently delete ALL ${stats.attendanceLogs} attendance records and session data. Students and subjects will be preserved. This action cannot be undone!`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE ALL ATTENDANCE",
+          style: "destructive",
+          onPress: performDeleteAllAttendance,
+        },
+      ]
+    );
+  };
+
+  const performDeleteAllAttendance = async () => {
+    setIsLoading(true);
+    try {
+      // Remove all attendance logs
+      await AsyncStorage.removeItem("attendanceLogs");
+
+      // Clear all attendance session data
+      const allKeys = await AsyncStorage.getAllKeys();
+      const attendanceKeys = allKeys.filter(
+        (key) => key.startsWith("attendance_") || key.startsWith("session_")
+      );
+      if (attendanceKeys.length > 0) {
+        await AsyncStorage.multiRemove(attendanceKeys);
+      }
+
+      Alert.alert(
+        "Attendance Data Deleted",
+        "All attendance records and session data have been permanently deleted.",
+        [{ text: "OK", onPress: analyzeData }]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to delete attendance data");
     }
     setIsLoading(false);
   };
 
   const clearAllData = async () => {
     Alert.alert(
-      'Clear All Data',
-      'This will permanently delete ALL subjects, students, and attendance records. This action cannot be undone!',
+      "Clear All Data",
+      "This will permanently delete ALL subjects, students, and attendance records. This action cannot be undone!",
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'DELETE ALL', 
-          style: 'destructive',
-          onPress: performClearAll 
-        }
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE EVERYTHING",
+          style: "destructive",
+          onPress: performClearAll,
+        },
       ]
     );
   };
@@ -190,28 +318,33 @@ export default function DataCleanupScreen({ navigation }) {
     setIsLoading(true);
     try {
       await Promise.all([
-        AsyncStorage.removeItem('subjects'),
-        AsyncStorage.removeItem('students'),
-        AsyncStorage.removeItem('attendanceLogs'),
+        AsyncStorage.removeItem("subjects"),
+        AsyncStorage.removeItem("students"),
+        AsyncStorage.removeItem("attendanceLogs"),
         // Clear all attendance session data
-        AsyncStorage.getAllKeys().then(keys => {
-          const attendanceKeys = keys.filter(key => 
-            key.startsWith('attendance_') || key.startsWith('session_')
+        AsyncStorage.getAllKeys().then((keys) => {
+          const attendanceKeys = keys.filter(
+            (key) => key.startsWith("attendance_") || key.startsWith("session_")
           );
           return AsyncStorage.multiRemove(attendanceKeys);
-        })
+        }),
       ]);
-      
+
       Alert.alert(
-        'Data Cleared',
-        'All data has been permanently deleted.',
-        [{ text: 'OK', onPress: () => {
-          analyzeData();
-          navigation.goBack();
-        }}]
+        "All Data Cleared",
+        "All data has been permanently deleted.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              analyzeData();
+              navigation.goBack();
+            },
+          },
+        ]
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to clear data');
+      Alert.alert("Error", "Failed to clear data");
     }
     setIsLoading(false);
   };
@@ -219,9 +352,9 @@ export default function DataCleanupScreen({ navigation }) {
   const exportData = async () => {
     try {
       const [subjectsData, studentsData, logsData] = await Promise.all([
-        AsyncStorage.getItem('subjects'),
-        AsyncStorage.getItem('students'),
-        AsyncStorage.getItem('attendanceLogs'),
+        AsyncStorage.getItem("subjects"),
+        AsyncStorage.getItem("students"),
+        AsyncStorage.getItem("attendanceLogs"),
       ]);
 
       const exportData = {
@@ -229,17 +362,17 @@ export default function DataCleanupScreen({ navigation }) {
         students: studentsData ? JSON.parse(studentsData) : [],
         attendanceLogs: logsData ? JSON.parse(logsData) : [],
         exportDate: new Date().toISOString(),
-        appVersion: '2.0',
+        appVersion: "2.0",
       };
 
       // In a real app, you would export this to a file or share it
-      console.log('Export Data:', exportData);
+      console.log("Export Data:", exportData);
       Alert.alert(
-        'Export Data',
+        "Export Data",
         `Data exported to console.\nSubjects: ${exportData.subjects.length}\nStudents: ${exportData.students.length}\nLogs: ${exportData.attendanceLogs.length}`
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to export data');
+      Alert.alert("Error", "Failed to export data");
     }
   };
 
@@ -254,24 +387,28 @@ export default function DataCleanupScreen({ navigation }) {
         {/* Data Analysis */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Analysis</Text>
-          
+
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{stats.totalSubjects}</Text>
               <Text style={styles.statLabel}>Total Subjects</Text>
               {stats.duplicateSubjects > 0 && (
-                <Text style={styles.duplicateText}>{stats.duplicateSubjects} duplicates</Text>
+                <Text style={styles.duplicateText}>
+                  {stats.duplicateSubjects} duplicates
+                </Text>
               )}
             </View>
-            
+
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{stats.totalStudents}</Text>
               <Text style={styles.statLabel}>Total Students</Text>
               {stats.duplicateStudents > 0 && (
-                <Text style={styles.duplicateText}>{stats.duplicateStudents} duplicates</Text>
+                <Text style={styles.duplicateText}>
+                  {stats.duplicateStudents} duplicates
+                </Text>
               )}
             </View>
-            
+
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{stats.attendanceLogs}</Text>
               <Text style={styles.statLabel}>Attendance Logs</Text>
@@ -281,10 +418,14 @@ export default function DataCleanupScreen({ navigation }) {
 
         {/* Cleanup Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cleanup Actions</Text>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.cleanupButton, stats.duplicateSubjects === 0 && styles.disabledButton]}
+          <Text style={styles.sectionTitle}>Cleanup Duplicates</Text>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.cleanupButton,
+              stats.duplicateSubjects === 0 && styles.disabledButton,
+            ]}
             onPress={cleanupSubjects}
             disabled={stats.duplicateSubjects === 0 || isLoading}
           >
@@ -296,8 +437,12 @@ export default function DataCleanupScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.cleanupButton, stats.duplicateStudents === 0 && styles.disabledButton]}
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.cleanupButton,
+              stats.duplicateStudents === 0 && styles.disabledButton,
+            ]}
             onPress={cleanupStudents}
             disabled={stats.duplicateStudents === 0 || isLoading}
           >
@@ -309,16 +454,68 @@ export default function DataCleanupScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.refreshButton]}
             onPress={analyzeData}
             disabled={isLoading}
           >
-            <Text style={styles.actionButtonText}>
-              Refresh Analysis
+            <Text style={styles.actionButtonText}>Refresh Analysis</Text>
+            <Text style={styles.actionSubtext}>Re-scan for duplicates</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* NEW: Delete Specific Data Types */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delete Specific Data</Text>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              stats.totalSubjects === 0 && styles.disabledButton,
+            ]}
+            onPress={deleteAllSubjects}
+            disabled={stats.totalSubjects === 0 || isLoading}
+          >
+            <Text style={styles.deleteButtonText}>
+              Delete All Subjects ({stats.totalSubjects})
             </Text>
-            <Text style={styles.actionSubtext}>
-              Re-scan for duplicates
+            <Text style={styles.deleteSubtext}>
+              Remove all subjects and related attendance data
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              stats.totalStudents === 0 && styles.disabledButton,
+            ]}
+            onPress={deleteAllStudents}
+            disabled={stats.totalStudents === 0 || isLoading}
+          >
+            <Text style={styles.deleteButtonText}>
+              Delete All Students ({stats.totalStudents})
+            </Text>
+            <Text style={styles.deleteSubtext}>
+              Remove all student records (attendance preserved)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              stats.attendanceLogs === 0 && styles.disabledButton,
+            ]}
+            onPress={deleteAllAttendanceLogs}
+            disabled={stats.attendanceLogs === 0 || isLoading}
+          >
+            <Text style={styles.deleteButtonText}>
+              Delete All Attendance Records ({stats.attendanceLogs})
+            </Text>
+            <Text style={styles.deleteSubtext}>
+              Remove all attendance data (subjects & students preserved)
             </Text>
           </TouchableOpacity>
         </View>
@@ -326,28 +523,24 @@ export default function DataCleanupScreen({ navigation }) {
         {/* Data Management */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Management</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, styles.exportButton]}
             onPress={exportData}
             disabled={isLoading}
           >
-            <Text style={styles.actionButtonText}>
-              Export All Data
-            </Text>
+            <Text style={styles.actionButtonText}>Export All Data</Text>
             <Text style={styles.actionSubtext}>
               Backup your data (to console for now)
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.dangerButton]}
             onPress={clearAllData}
             disabled={isLoading}
           >
-            <Text style={styles.dangerButtonText}>
-              Clear All Data
-            </Text>
+            <Text style={styles.dangerButtonText}>Clear All Data</Text>
             <Text style={styles.dangerSubtext}>
               Permanently delete everything
             </Text>
@@ -357,10 +550,21 @@ export default function DataCleanupScreen({ navigation }) {
         {/* Instructions */}
         <View style={styles.instructions}>
           <Text style={styles.instructionsTitle}>Instructions:</Text>
-          <Text style={styles.instructionText}>• Run analysis to identify duplicates</Text>
-          <Text style={styles.instructionText}>• Clean up duplicates before adding new data</Text>
-          <Text style={styles.instructionText}>• Export data as backup before major changes</Text>
-          <Text style={styles.instructionText}>• Use "Clear All" only to start completely fresh</Text>
+          <Text style={styles.instructionText}>
+            • Run analysis to identify duplicates
+          </Text>
+          <Text style={styles.instructionText}>
+            • Clean up duplicates before adding new data
+          </Text>
+          <Text style={styles.instructionText}>
+            • Use specific delete options to remove individual data types
+          </Text>
+          <Text style={styles.instructionText}>
+            • Export data as backup before major changes
+          </Text>
+          <Text style={styles.instructionText}>
+            • Use "Clear All" only to start completely fresh
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -370,18 +574,18 @@ export default function DataCleanupScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     padding: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1565C0',
+    fontWeight: "bold",
+    color: "#1565C0",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginBottom: 24,
   },
   section: {
@@ -389,42 +593,42 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 12,
   },
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
     marginHorizontal: 4,
     elevation: 2,
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1565C0',
+    fontWeight: "bold",
+    color: "#1565C0",
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   duplicateText: {
     fontSize: 11,
-    color: '#FF5722',
-    fontWeight: '600',
+    color: "#FF5722",
+    fontWeight: "600",
     marginTop: 4,
   },
   actionButton: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -432,59 +636,74 @@ const styles = StyleSheet.create({
   },
   cleanupButton: {
     borderLeftWidth: 4,
-    borderLeftColor: '#FF9800',
+    borderLeftColor: "#FF9800",
   },
   refreshButton: {
     borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderLeftColor: "#2196F3",
   },
   exportButton: {
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: "#4CAF50",
+  },
+  deleteButton: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF5722",
+    backgroundColor: "#FFF3E0",
   },
   dangerButton: {
     borderLeftWidth: 4,
-    borderLeftColor: '#F44336',
-    backgroundColor: '#FFEBEE',
+    borderLeftColor: "#F44336",
+    backgroundColor: "#FFEBEE",
   },
   disabledButton: {
     opacity: 0.5,
   },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   actionSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
+    marginTop: 4,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FF5722",
+  },
+  deleteSubtext: {
+    fontSize: 14,
+    color: "#FF5722",
     marginTop: 4,
   },
   dangerButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#F44336',
+    fontWeight: "600",
+    color: "#F44336",
   },
   dangerSubtext: {
     fontSize: 14,
-    color: '#F44336',
+    color: "#F44336",
     marginTop: 4,
   },
   instructions: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 16,
     borderRadius: 12,
     elevation: 2,
   },
   instructionsTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
 });
