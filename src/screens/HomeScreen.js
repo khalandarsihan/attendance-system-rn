@@ -1,4 +1,4 @@
-// src/screens/HomeScreen.js - Updated with Logout
+// src/screens/HomeScreen.js - Updated with Daily Summary
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -62,6 +62,13 @@ export default function HomeScreen({ navigation }) {
       icon: "✓",
       color: "#4CAF50",
       onPress: () => navigation.navigate("Attendance"),
+    },
+    {
+      title: "Daily Summary",
+      subtitle: "View comprehensive daily attendance summary",
+      icon: "📋",
+      color: "#1565C0",
+      onPress: () => navigation.navigate("DailySummary"),
     },
     {
       title: "Manage Subjects",

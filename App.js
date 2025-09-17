@@ -1,4 +1,4 @@
-// App.js - Updated with Admin Authentication
+// App.js - Updated with Daily Summary Screen
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -14,6 +14,7 @@ import StudentsScreen from "./src/screens/StudentsScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
 import TimetableScreen from "./src/screens/TimetableScreen";
 import DataCleanupScreen from "./src/screens/DataCleanupScreen";
+import DailySummaryScreen from "./src/screens/DailySummaryScreen"; // NEW
 
 // Teacher screens
 import TeacherLoginScreen from "./src/screens/TeacherLoginScreen";
@@ -121,6 +122,11 @@ export default function App() {
           name="Students"
           component={StudentsScreen}
           options={{ title: "Manage Students" }}
+        />
+        <Stack.Screen
+          name="DailySummary"
+          component={DailySummaryScreen}
+          options={{ title: "Daily Summary" }}
         />
 
         {/* Teacher Portal */}
