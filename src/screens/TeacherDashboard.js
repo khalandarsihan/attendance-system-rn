@@ -1,4 +1,4 @@
-// src/screens/TeacherDashboard.js - Updated with proper time sorting
+// src/screens/TeacherDashboard.js - Fixed navigation issue
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -86,9 +86,11 @@ export default function TeacherDashboard({ route, navigation }) {
     ]);
   };
 
+  // FIXED: This function now properly navigates to TeacherAttendance
   const startClass = (subject) => {
+    // Navigate to TeacherAttendance screen with proper parameters
     navigation.navigate("TeacherAttendance", {
-      subject,
+      subject: subject,
       faculty: faculty.facultyCode,
     });
   };
@@ -97,6 +99,12 @@ export default function TeacherDashboard({ route, navigation }) {
     navigation.navigate("TeacherReports", {
       faculty: faculty.facultyCode,
       facultyName: faculty.facultyName,
+    });
+  };
+
+  const viewMySubjects = () => {
+    navigation.navigate("TeacherSubjects", {
+      facultyCode: faculty.facultyCode,
     });
   };
 
@@ -171,6 +179,7 @@ export default function TeacherDashboard({ route, navigation }) {
                     isCurrentTime && styles.currentClassCard,
                   ]}
                   onPress={() => startClass(subject)}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.timeIndicator}>
                     <Text style={styles.timeText}>{subject.time}</Text>
@@ -182,7 +191,12 @@ export default function TeacherDashboard({ route, navigation }) {
                     </Text>
                     {isCurrentTime && (
                       <Text style={styles.currentIndicator}>
-                        NOW - Tap to start
+                        NOW - Tap to start attendance
+                      </Text>
+                    )}
+                    {!isCurrentTime && (
+                      <Text style={styles.tapToStartText}>
+                        Tap to take attendance
                       </Text>
                     )}
                   </View>
@@ -209,11 +223,7 @@ export default function TeacherDashboard({ route, navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() =>
-              navigation.navigate("TeacherSubjects", {
-                facultyCode: faculty.facultyCode,
-              })
-            }
+            onPress={viewMySubjects}
           >
             <Text style={styles.actionButtonText}>📚 My Subjects</Text>
           </TouchableOpacity>
@@ -222,23 +232,29 @@ export default function TeacherDashboard({ route, navigation }) {
         {/* Recent Classes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Classes</Text>
-          {recentClasses.map((log, index) => (
-            <View key={index} style={styles.recentClassCard}>
-              <View style={styles.recentClassInfo}>
-                <Text style={styles.recentClassName}>{log.subjectName}</Text>
-                <Text style={styles.recentClassDate}>{log.date}</Text>
-                <Text style={styles.recentClassStats}>
-                  Duration: {log.actualDuration || "N/A"} min • Present:{" "}
-                  {
-                    Object.values(log.attendance).filter(
-                      (a) =>
-                        (typeof a === "string" ? a : a.status) === "present"
-                    ).length
-                  }
-                </Text>
+          {recentClasses.length > 0 ? (
+            recentClasses.map((log, index) => (
+              <View key={index} style={styles.recentClassCard}>
+                <View style={styles.recentClassInfo}>
+                  <Text style={styles.recentClassName}>{log.subjectName}</Text>
+                  <Text style={styles.recentClassDate}>{log.date}</Text>
+                  <Text style={styles.recentClassStats}>
+                    Duration: {log.actualDuration || "N/A"} min • Present:{" "}
+                    {
+                      Object.values(log.attendance).filter(
+                        (a) =>
+                          (typeof a === "string" ? a : a.status) === "present"
+                      ).length
+                    }
+                  </Text>
+                </View>
               </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No recent classes found</Text>
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -377,6 +393,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#4CAF50",
     fontWeight: "600",
+    marginTop: 4,
+  },
+  tapToStartText: {
+    fontSize: 12,
+    color: "#2E7D32",
+    fontWeight: "500",
     marginTop: 4,
   },
   classArrow: {
