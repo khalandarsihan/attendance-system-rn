@@ -1,4 +1,4 @@
-// src/screens/TeacherLoginScreen.js
+// src/screens/TeacherLoginScreen.js - Fixed Complete Version
 import React, { useState } from "react";
 import {
   View,
@@ -16,11 +16,39 @@ export default function TeacherLoginScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Updated faculty credentials as per your requirement
   const facultyCredentials = {
-    KS: { password: "ks123", name: "Khalandar Sihan Saqaufi" },
-    MJ: { password: "mj123", name: "Muhammad Jamal Saqaufi" },
-    JM: { password: "jm123", name: "Jaish Muhammad Saqaufi" },
-    SH: { password: "sh123", name: "Muhammad Shakeel Sir" },
+    KS: {
+      password: "sihan123",
+      name: "Khalandar Sihan Saqaufi",
+    },
+    MJ: {
+      password: "jamal123",
+      name: "Muhammad Jamal Saqaufi",
+    },
+    JM: {
+      password: "jaish123",
+      name: "Jaish Muhammad Saqaufi",
+    },
+    SH: {
+      password: "shakeel123",
+      name: "Muhammad Shakeel Sir",
+    },
+  };
+
+  const createTeacherSession = async (facultyCode, facultyName) => {
+    const sessionData = {
+      role: "teacher",
+      facultyCode: facultyCode,
+      facultyName: facultyName,
+      loginTime: new Date().toISOString(),
+      sessionId:
+        Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 hours
+    };
+
+    await AsyncStorage.setItem("teacherSession", JSON.stringify(sessionData));
+    return sessionData;
   };
 
   const handleLogin = async () => {
@@ -31,41 +59,34 @@ export default function TeacherLoginScreen({ navigation }) {
 
     setIsLoading(true);
 
-    const upperFacultyCode = facultyCode.toUpperCase();
+    const upperFacultyCode = facultyCode.toUpperCase().trim();
     const faculty = facultyCredentials[upperFacultyCode];
 
     if (faculty && faculty.password === password) {
       try {
-        // Store login session
-        const loginSession = {
-          facultyCode: upperFacultyCode,
-          facultyName: faculty.name,
-          loginTime: new Date().toISOString(),
-        };
-
-        await AsyncStorage.setItem(
-          "teacherSession",
-          JSON.stringify(loginSession)
+        const session = await createTeacherSession(
+          upperFacultyCode,
+          faculty.name
         );
 
-        // Navigate to teacher dashboard
-        navigation.replace("TeacherDashboard", { faculty: loginSession });
+        Alert.alert("Login Successful", `Welcome ${faculty.name}`, [
+          {
+            text: "Continue",
+            onPress: () =>
+              navigation.replace("TeacherDashboard", { faculty: session }),
+          },
+        ]);
       } catch (error) {
-        Alert.alert("Error", "Failed to login. Please try again.");
+        Alert.alert("Error", "Failed to create session. Please try again.");
       }
     } else {
       Alert.alert(
-        "Invalid Credentials",
-        "Please check your faculty code and password"
+        "Login Failed",
+        "Invalid faculty code or password. Please check your credentials and try again."
       );
     }
 
     setIsLoading(false);
-  };
-
-  const quickLogin = (code) => {
-    setFacultyCode(code);
-    setPassword(facultyCredentials[code].password);
   };
 
   return (
@@ -86,6 +107,7 @@ export default function TeacherLoginScreen({ navigation }) {
           onChangeText={setFacultyCode}
           autoCapitalize="characters"
           maxLength={2}
+          autoCorrect={false}
         />
 
         <TextInput
@@ -94,6 +116,7 @@ export default function TeacherLoginScreen({ navigation }) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete="password"
         />
 
         <TouchableOpacity
@@ -106,22 +129,6 @@ export default function TeacherLoginScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
 
-        {/* Quick Login for Demo */}
-        <View style={styles.quickLoginSection}>
-          <Text style={styles.quickLoginTitle}>Quick Login (Demo)</Text>
-          <View style={styles.facultyButtons}>
-            {Object.keys(facultyCredentials).map((code) => (
-              <TouchableOpacity
-                key={code}
-                style={styles.facultyQuickButton}
-                onPress={() => quickLogin(code)}
-              >
-                <Text style={styles.facultyQuickText}>{code}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         <TouchableOpacity
           style={styles.adminButton}
           onPress={() => navigation.navigate("AdminLogin")}
@@ -131,21 +138,23 @@ export default function TeacherLoginScreen({ navigation }) {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Default passwords: ks123, mj123, jm123, sh123
+        <Text style={styles.footerText}>TechEthica Management System v2.0</Text>
+        <Text style={styles.footerSubtext}>
+          Faculty: Contact admin for password reset
         </Text>
       </View>
     </SafeAreaView>
   );
 }
 
+// Complete styles object - This was missing in your file!
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
   },
   header: {
-    backgroundColor: "#2E7D32",
+    backgroundColor: "#2E7D32", // Teacher green
     padding: 40,
     alignItems: "center",
   },
@@ -186,6 +195,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#DDD",
     elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
   loginButton: {
     backgroundColor: "#2E7D32",
@@ -194,6 +210,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 16,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
   disabledButton: {
     backgroundColor: "#AAA",
@@ -202,35 +225,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
-  },
-  quickLoginSection: {
-    marginTop: 32,
-    padding: 16,
-    backgroundColor: "white",
-    borderRadius: 12,
-    elevation: 2,
-  },
-  quickLoginTitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  facultyButtons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  facultyQuickButton: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#2E7D32",
-  },
-  facultyQuickText: {
-    color: "#2E7D32",
-    fontWeight: "600",
   },
   adminButton: {
     backgroundColor: "#607D8B",
@@ -248,8 +242,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerText: {
-    color: "#999",
+    color: "#666",
     fontSize: 12,
     textAlign: "center",
+    fontWeight: "600",
+  },
+  footerSubtext: {
+    color: "#999",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 4,
   },
 });

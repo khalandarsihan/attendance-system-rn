@@ -26,6 +26,35 @@ import TeacherSubjectsScreen from "./src/screens/TeacherSubjectsScreen";
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Add this to your App.js or create a separate AuthGuard component
+export const AuthGuard = {
+  // Check authentication when app starts
+  async checkAuthOnAppStart(navigation) {
+    try {
+      // Check for existing sessions
+      const adminValid = await SessionManager.validateSession("admin");
+      const teacherValid = await SessionManager.validateSession("teacher");
+
+      if (adminValid) {
+        navigation.replace("AdminPanel");
+        return;
+      }
+
+      if (teacherValid) {
+        const teacherSession = await SessionManager.getSession("teacher");
+        navigation.replace("TeacherDashboard", { faculty: teacherSession });
+        return;
+      }
+
+      // No valid session, go to login
+      navigation.replace("AdminLogin");
+    } catch (error) {
+      console.log("Auth check error:", error);
+      navigation.replace("AdminLogin");
+    }
+  },
+};
+
 // Admin Tab Navigator
 function AdminTabs() {
   return (
